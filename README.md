@@ -1,54 +1,56 @@
 # XYJ Android Framework
 
-这是一个保留最基本开发框架的 Android 项目。
+用于 Windows 原生开发的 Android 项目，包含语音辅导、拍照批卷与相关构建配置。
 
-## 当前保留内容
+## 安装环境
 
-- Gradle Wrapper 与基础 Gradle 配置
-- 单模块 Android App：`app`
-- 最小启动入口：`MainActivity`
-- 基础资源：应用名、颜色、主题
-- 构建脚本：`build.sh`
-- 日志脚本：`simulation.sh`
+让 Agent 按 [环境安装手册](docs/AGENT_SETUP.md) 执行，也可直接复制下面的提示词。
 
-## 环境准备
+需要 JDK 17、Android SDK 36、Build Tools 35.0.0、platform-tools 和 Gradle 8.14.3。工具统一放入项目 `.tools/`，不需要 Android Studio；工具和缓存不提交 Git。
 
-项目需要 Java 17、Android SDK 和 Gradle Wrapper。Android SDK 可以通过官方 Command line tools 安装：
+## 给 Agent 的安装提示词
 
-1. 从 Android 官方下载 Command line tools：
-   https://developer.android.com/studio#command-tools
+复制以下内容发送给 Agent：
 
-   Linux 包示例：
-   https://dl.google.com/android/repository/commandlinetools-linux-14742923_latest.zip
+```text
+请为当前项目安装并验证 Windows 开发环境。先阅读 README.md 和 docs/AGENT_SETUP.md，然后实际执行安装，不要只给我操作建议。
 
-2. 解压后目录必须整理成：
+将 JDK、Android SDK、platform-tools（包含 adb）和本地 Gradle 放在项目 .tools 目录，设置隐藏属性并确认 Git 忽略；使用项目内工具，不依赖其他盘的已有安装。不修改系统长期环境变量或执行策略。已有完整安装先检查再复用，不覆盖未知文件。
 
-   ```text
-   $HOME/Android/cmdline-tools/latest/bin/sdkmanager
-   ```
+下载使用官方来源并核验校验值，检查每步退出码。自动下载失败时尝试官方渠道；若必须由浏览器下载，明确告诉我下载地址和保存位置，不使用残缺文件。
 
-   也就是 `sdkmanager` 必须位于 `<SDK根目录>/cmdline-tools/latest/bin/`。
+运行 windows_build.bat -BuildOnly，确认构建成功并检查 APK。然后检测手机；有已授权设备时安装验证，无设备或未授权则如实报告。不要擅自卸载应用、清除数据、替换签名密钥或修改系统驱动。
 
-3. 安装本项目需要的 SDK 组件：
-
-   ```bash
-   $HOME/Android/cmdline-tools/latest/bin/sdkmanager --sdk_root=$HOME/Android \
-     "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-   ```
-
-   构建时 Android Gradle Plugin 可能还会按需安装兼容的 build-tools 版本。
-
-4. Gradle 通过 `local.properties` 里的 `sdk.dir` 找 SDK，写入命令：
-
-   ```bash
-   printf 'sdk.dir=%s/Android\n' "$HOME" > local.properties
-   ```
-
-如果使用离线 Gradle 分发包，把 `gradle-8.14.3-all.zip` 放到 `offline-deps/`，然后执行：
-
-```bash
-./offline-deps/install.sh
+遇到问题修正通用安装步骤，但文档不要写入本机绝对路径、设备序列号、个人信息或本次调试流水账。最后报告安装内容、构建结果、设备验证结果和未完成项。
 ```
+
+## 日常使用
+
+在项目根目录打开 PowerShell：
+
+```powershell
+# 编译并安装到手机
+.\windows_build.bat
+# 仅编译
+.\windows_build.bat -BuildOnly
+# 查看应用日志（先在手机打开应用，Ctrl+C 停止）
+.\windows_simulation.bat
+```
+
+多台设备时追加 `-Serial 设备序列号`。两个入口仅为本次进程放行 PowerShell 脚本，不修改系统长期执行策略。
+
+产物位于 `app/build/outputs/apk/debug/app-debug.apk`。编译成功不代表安装成功；安装失败应查看前面的 adb 原始错误。日志入口不会启动模拟器。
+
+## 项目结构
+
+- `app/src/main/`：应用代码、清单与资源。
+- `app/build.gradle.kts`：应用构建配置。
+- `gradle/`：依赖版本与 Gradle Wrapper 文件。
+- `scripts/`：Windows 构建、环境与日志实现。
+- `docs/`：Agent 环境安装指南。
+- `version.properties`：应用版本。
+- `.tools/`：本地工具与下载包，已忽略并可设为隐藏。
+- `.gradle-home/`：项目 Gradle 缓存，已忽略。
 
 ## 豆包语音辅导配置
 
@@ -57,7 +59,6 @@
 ```properties
 doubao.appId=你的 AppID
 doubao.token=你的 Access Token
-doubao.appKey=PlgvMymc7f3tQnJ6
 ```
 
 可选配置：
@@ -112,57 +113,12 @@ doubao.multimodal.endpoint=https://ark.cn-beijing.volces.com/api/v3/responses
 - 后面靠学生语音和 AI 对话继续。
 - 同一题停留期间不会反复设置上下文；切到下一题会重建会话并设置下一题上下文。
 
-## WSL 真机调试
+## 常见问题
 
-WSL 里可以负责编译，真机连接和安装建议复用 Windows 侧的 `adb.exe`。这样不需要把 USB 设备挂进 WSL。[下载地址](https://dl.google.com/android/repository/platform-tools-latest-windows.zip)
-
-1. Windows 下载并解压 Android SDK Platform-Tools，例如：
-
-   ```text
-   F:\Android\platform-tools\adb.exe
-   ```
-
-2. Windows PowerShell 确认设备已连接：
-
-   ```powershell
-   F:\Android\platform-tools\adb.exe devices -l
-   ```
-
-   需要看到设备状态为 `device`。
-
-3. WSL 编译 Debug APK：
-
-   ```bash
-   bash wsl_build.sh
-   ```
-
-4. WSL 直接调用 Windows 的 `adb.exe` 安装 APK：
-
-   ```bash
-   /mnt/f/Android/platform-tools/adb.exe install -r -t app/build/outputs/apk/debug/app-debug.apk
-   ```
-
-## 常用命令
-
-```bash
-./gradlew :app:assembleDebug
-./gradlew :app:installDebug
-./build.sh
-```
-
-## 目录结构
-
-```text
-app/src/main/
-├── AndroidManifest.xml
-├── java/com/xyj/focuspod/MainActivity.kt
-└── res/
-    ├── values/
-    └── values-night/
-```
-
-后续开发可以从 `MainActivity.kt` 开始添加页面和业务逻辑。
-
+- 缺少 Java 或 SDK：按安装手册检查目录层级。
+- Gradle 自动下载失败：支持浏览器下载 ZIP，再校验并使用本地包，详见安装手册。
+- adb 列表为空：检查 USB 链路、调试授权与 Windows 驱动，不等同于编译环境失败。
+- 签名不一致：复用原调试密钥；卸载旧应用会清除数据，不应自动卸载。
 
 ## TODO
 
