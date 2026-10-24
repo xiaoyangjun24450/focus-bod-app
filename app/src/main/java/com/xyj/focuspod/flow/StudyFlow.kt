@@ -605,6 +605,8 @@ class StudyFlow(
     private fun shouldRetryTutoring(message: String): Boolean {
         return !message.contains("未配置") &&
             !message.contains("权限") &&
+            !message.contains("通话") &&
+            !message.contains("麦克风") &&
             !message.contains("AppID") &&
             !message.contains("AppKey") &&
             !message.contains("Token")

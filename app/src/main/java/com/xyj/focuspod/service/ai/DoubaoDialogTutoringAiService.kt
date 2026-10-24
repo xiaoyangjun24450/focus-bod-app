@@ -2,6 +2,7 @@ package com.xyj.focuspod.service.ai
 
 import android.app.Application
 import android.content.Context
+import android.media.AudioManager
 import android.os.Handler
 import android.util.Log
 import com.bytedance.speech.speechengine.SpeechEngine
@@ -40,6 +41,11 @@ class DoubaoDialogTutoringAiService(
         pendingOpeningQuestion = question
         if (!config.isReady()) {
             listener.onError("豆包语音参数未配置，请补充 APP ID 和 Access Token。")
+            return
+        }
+
+        if (isAudioBusy()) {
+            listener.onError(CALL_IN_PROGRESS_MESSAGE)
             return
         }
 
@@ -350,7 +356,12 @@ class DoubaoDialogTutoringAiService(
     ): Int? {
         val result = sendDirective(directive, payload)
         if (result != SpeechEngineDefines.ERR_NO_ERROR) {
-            listener?.onError("$action 失败：$result")
+            val message = if (result == SpeechEngineDefines.ERR_REC_CHECK_ENVIRONMENT_FAILED) {
+                CALL_IN_PROGRESS_MESSAGE
+            } else {
+                "$action 失败：$result"
+            }
+            listener?.onError(message)
             return null
         }
         return result
@@ -500,10 +511,19 @@ class DoubaoDialogTutoringAiService(
         return !cleanText.startsWith("{") && !cleanText.startsWith("[")
     }
 
+    // 通话或语音聊天会把 AudioManager 切离 MODE_NORMAL，语音引擎的录音环境检查会直接失败（-700）。
+    // 这种情况只能等通话结束，重连没有意义，所以提前判断并给出可执行的提示。
+    private fun isAudioBusy(): Boolean {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+        return audioManager.mode != AudioManager.MODE_NORMAL
+    }
+
     companion object {
         private const val TAG = "DoubaoDialogTutoring"
         private const val AEC_MODEL_ASSET_PATH = "doubao/aec.model"
         private const val AEC_MODEL_FILE_PATH = "doubao/aec.model"
+        private const val CALL_IN_PROGRESS_MESSAGE =
+            "手机正在通话中，语音辅导需要独占麦克风，请结束通话后重试。"
         private const val TUTORING_SYSTEM_ROLE_PROMPT_ASSET_PATH = "prompts/tutoring_context_prompt.txt"
         private const val TUTORING_SPEAKING_STYLE_ASSET_PATH = "prompts/tutoring_speaking_style.txt"
         private const val TUTORING_OPENING_PROMPT_ASSET_PATH = "prompts/tutoring_opening_prompt.txt"
