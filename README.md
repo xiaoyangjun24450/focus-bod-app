@@ -2,11 +2,13 @@
 
 用于 Windows 原生开发的 Android 项目，包含语音辅导、拍照批卷与相关构建配置。
 
+本仓库保持独立 Git，Windows 入口依赖上两级宿主的 scripts 目录；脱离该工作区后不能直接使用这两个入口。详见 [工作区开发说明](WINDOWS_WORKSPACE.md)。
+
 ## 安装环境
 
 让 Agent 按 [环境安装手册](docs/AGENT_SETUP.md) 执行，也可直接复制下面的提示词。
 
-需要 JDK 17、Android SDK 36、Build Tools 35.0.0、platform-tools 和 Gradle 8.14.3。工具统一放入项目 `.tools/`，不需要 Android Studio；工具和缓存不提交 Git。
+需要 JDK 17、Android SDK 36、Build Tools 35.0.0、platform-tools 和 Gradle 8.14.3。工具统一放入宿主工作区 `.tools/`，不需要 Android Studio；工具和缓存不提交 Git。
 
 ## 给 Agent 的安装提示词
 
@@ -15,7 +17,7 @@
 ```text
 请为当前项目安装并验证 Windows 开发环境。先阅读 README.md 和 docs/AGENT_SETUP.md，然后实际执行安装，不要只给我操作建议。
 
-将 JDK、Android SDK、platform-tools（包含 adb）和本地 Gradle 放在项目 .tools 目录，设置隐藏属性并确认 Git 忽略；使用项目内工具，不依赖其他盘的已有安装。不修改系统长期环境变量或执行策略。已有完整安装先检查再复用，不覆盖未知文件。
+将 JDK、Android SDK、platform-tools（包含 adb）和本地 Gradle 放在宿主工作区 .tools 目录，设置隐藏属性并确认 Git 忽略；使用项目内工具，不依赖其他盘的已有安装。不修改系统长期环境变量或执行策略。已有完整安装先检查再复用，不覆盖未知文件。
 
 下载使用官方来源并核验校验值，检查每步退出码。自动下载失败时尝试官方渠道；若必须由浏览器下载，明确告诉我下载地址和保存位置，不使用残缺文件。
 
@@ -46,11 +48,11 @@
 - `app/src/main/`：应用代码、清单与资源。
 - `app/build.gradle.kts`：应用构建配置。
 - `gradle/`：依赖版本与 Gradle Wrapper 文件。
-- `scripts/`：Windows 构建、环境与日志实现。
+- `windows-host.json`：宿主构建入口使用的任务和产物配置。
 - `docs/`：Agent 环境安装指南。
 - `version.properties`：应用版本。
-- `.tools/`：本地工具与下载包，已忽略并可设为隐藏。
-- `.gradle-home/`：项目 Gradle 缓存，已忽略。
+- 工具与下载包：共用宿主 `.tools/`。
+- Gradle 缓存：共用宿主 `.gradle-home/`。
 
 ## 豆包语音辅导配置
 
