@@ -113,10 +113,10 @@ class StudyFlow(
             lastGradeResult = GradeResult(
                 questionId = question.id,
                 stage = StudyStage.EXAMPLE,
-                score = 86.0,
-                feedback = "思路正确：先算出用去的 8 米，再算剩余 16 米。单位写完整。",
-                suggestion = "最后一步减法可以再检查一遍。",
-                maxScore = 100.0
+                score = 8.0,
+                feedback = "通分的方法用对了。",
+                suggestion = "最后一步计算还需要再检查。",
+                maxScore = 10.0
             ),
             voiceCaption = "请先读题，找出已知条件；你也可以直接说出卡住的地方。",
             tutoringMessages = listOf(
@@ -591,12 +591,17 @@ class StudyFlow(
         handler.postDelayed({ enterExampleQuestion() }, 800L)
     }
 
+    /**
+     * 单题满分。100 分是整轮考试的总分，摊到本轮每道考试题上；
+     * 例题不计入总分，但沿用同一档满分，避免把 100 当成单题分数。
+     */
     private fun currentQuestionMaxScore(): Double {
-        return if (state.stage == StudyStage.EXAM) {
-            ExamScoring.questionMaxScore(activeStageQuestions.size)
+        val scoredCount = if (state.stage == StudyStage.EXAM) {
+            activeStageQuestions.size
         } else {
-            ExamScoring.TOTAL_EXAM_SCORE
+            state.selectedPlan?.examQuestions?.size ?: 0
         }
+        return ExamScoring.questionMaxScore(scoredCount.coerceAtLeast(1))
     }
 
     private fun runDoorOpen() {
