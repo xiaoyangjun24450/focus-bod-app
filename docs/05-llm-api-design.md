@@ -7,7 +7,7 @@
 | 场景 | 当前实现 | 调用方式 | 触发条件 | 地址 |
 | --- | --- | --- | --- | --- |
 | 辅导页 AI 语音辅导 | `DoubaoDialogTutoringAiService` | 火山引擎豆包 Dialog 语音 SDK，底层 WebSocket | 进入辅导页时启动会话；学生之后通过麦克风持续对话 | `wss://openspeech.bytedance.com/api/v3/realtime/dialogue` |
-| 批卷页图片批改 | `DoubaoMultimodalGradingAiService` | HTTP `POST`，火山方舟 Responses API | 进入批卷页后等待 5 秒拍照，拍照成功后发起批改 | `https://ark.cn-beijing.volces.com/api/v3/responses` |
+| 批卷页图片批改 | `DoubaoMultimodalGradingAiService` | HTTP `POST`，火山方舟 Responses API | 学生按下快门拍照成功后发起批改 | `https://ark.cn-beijing.volces.com/api/v3/responses` |
 
 配置来自 `local.properties` 或 Gradle Property，最终写入 `BuildConfig`。当前 App 是直连火山引擎接口，生产版本建议把 API Key 放到后端，由后端转发调用。
 
@@ -183,8 +183,8 @@ a_z > 7 稳定 3 秒
 进入批卷页后：
 
 1. 显示后置摄像头预览。
-2. 等待 5 秒并提示学生不要遮挡试卷。
-3. 自动拍照。
+2. 提示学生不要遮挡试卷，把答案完整放进画面。
+3. 学生按下快门拍照。
 4. 拍照成功后调用豆包多模态批卷接口。
 5. 批改成功后提示手机翻回正面。
 6. 检测到 `|a_z| < 2` 后进入批卷结果页。
@@ -367,10 +367,10 @@ App 解析后的业务结果：
 
 | 情况 | App 行为 |
 | --- | --- |
-| 拍照失败 | 当前批卷页显示提示，1 秒后重新进入 5 秒拍摄准备 |
-| HTTP 非 2xx | 当前批卷页显示 AI 批改失败，1 秒后重试 |
-| 响应 `status = incomplete` | 当前批卷页显示 AI 批改失败，1 秒后重试 |
-| 响应缺少输出文本 | 当前批卷页显示 AI 批改失败，1 秒后重试 |
+| 拍照失败 | 当前批卷页显示提示，回到「准备拍摄」，等学生重新按快门 |
+| HTTP 非 2xx | 当前批卷页显示 AI 批改失败，回到「准备拍摄」，等学生重新按快门 |
+| 响应 `status = incomplete` | 当前批卷页显示 AI 批改失败，回到「准备拍摄」，等学生重新按快门 |
+| 响应缺少输出文本 | 当前批卷页显示 AI 批改失败，回到「准备拍摄」，等学生重新按快门 |
 | 输出不是合法 JSON | 当前批卷页显示 AI 批改失败，1 秒后重试 |
 
 成功解析后，App 只在 logcat 输出最终用于业务的 JSON：

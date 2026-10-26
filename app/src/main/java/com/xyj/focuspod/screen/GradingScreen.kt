@@ -1,35 +1,24 @@
 package com.xyj.focuspod.screen
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.xyj.focuspod.flow.StudyFlow
 import com.xyj.focuspod.model.StudySessionState
-import com.xyj.focuspod.ui.component.AppScaffold
-import com.xyj.focuspod.ui.component.GradingCameraPanel
-import com.xyj.focuspod.ui.component.StageTopBar
-import com.xyj.focuspod.ui.component.VoiceCaptionBar
+import com.xyj.focuspod.ui.component.DesignCanvas
+import com.xyj.focuspod.ui.component.NenyaAlert
+import com.xyj.focuspod.ui.component.NenyaGradingLandscape
 import com.xyj.focuspod.ui.component.stageText
 
+/** 页面 6 · 批卷：横屏全屏取景，学生按右侧快门拍照。 */
 @Composable
 fun GradingScreen(state: StudySessionState, flow: StudyFlow) {
-    AppScaffold(alertMessage = state.alertMessage, scrollable = false) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            StageTopBar(stageText = stageText(state.stage), remainingText = "剩余 ${state.remainingCount} 题")
-            Spacer(modifier = Modifier.height(16.dp))
-            GradingCameraPanel(
-                step = state.gradingStep,
-                countdownSeconds = state.gradingCountdownSeconds,
-                onPreviewReady = flow::bindGradingCameraPreview,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            VoiceCaptionBar(text = state.voiceCaption, modifier = Modifier.fillMaxWidth())
-        }
+    DesignCanvas(width = 892f, height = 412f) {
+        NenyaGradingLandscape(
+            step = state.gradingStep,
+            stageLabel = stageText(state.stage),
+            remaining = state.remainingCount,
+            onPreviewReady = flow::bindGradingCameraPreview,
+            onCapture = flow::captureNow
+        )
+        NenyaAlert(message = state.alertMessage)
     }
 }

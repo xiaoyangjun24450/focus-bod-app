@@ -53,6 +53,15 @@ data class GradeResult(
     val maxScore: Double = 100.0
 )
 
+/** 合并多份计划时，按每份计划自己的达标分单独判定。 */
+data class PlanScore(
+    val planId: String,
+    val title: String,
+    val score: Double,
+    val passScore: Int,
+    val passed: Boolean
+)
+
 enum class TutoringSpeaker {
     AI,
     STUDENT
@@ -94,6 +103,7 @@ data class StudySessionState(
     val stage: StudyStage = StudyStage.EXAMPLE,
     val selectedPlan: StudyPlan? = null,
     val currentQuestion: Question? = null,
+    val questionNumber: Int = 0,
     val remainingCount: Int = 0,
     val lastGradeResult: GradeResult? = null,
     val alertMessage: String? = null,
@@ -109,6 +119,7 @@ data class StudySessionState(
     val doorStatus: DoorStatus = DoorStatus.OPENING,
     val totalExamScore: Double = 0.0,
     val examPassed: Boolean? = null,
+    val planScores: List<PlanScore> = emptyList(),
     val completedQuestionCount: Int = 0,
     val mistakeCount: Int = 0
 )

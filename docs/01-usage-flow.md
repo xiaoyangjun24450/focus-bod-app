@@ -14,7 +14,7 @@ graph TD
 
     tutoring_page["辅导页：例题或错题辅导"]
     exam_page["考试页：只显示题目"]
-    grading_prepare["批卷页：后摄预览，5 秒后拍照"]
+    grading_prepare["批卷页：后摄预览，按快门拍照"]
     grading_ai["上传图片，豆包多模态批改"]
     wait_upright["提示翻回正面，等待手机竖直"]
     result_page["批卷结果页：显示 10 秒"]
@@ -33,8 +33,8 @@ graph TD
     tutoring_page -->|完成作答并翻转| grading_prepare
     exam_page -->|完成作答并翻转| grading_prepare
     grading_prepare -->|拍照成功| grading_ai
-    grading_prepare -->|拍照失败，自动重试| grading_prepare
-    grading_ai -->|批改失败，自动重试| grading_prepare
+    grading_prepare -->|拍照失败，回到准备拍摄| grading_prepare
+    grading_ai -->|批改失败，回到准备拍摄| grading_prepare
     grading_ai -->|批改完成| wait_upright
     wait_upright -->|手机竖直| result_page
 
@@ -60,7 +60,7 @@ graph TD
 - 每道考试题满分为 `100 / 本轮考试题目数量`，考试总分为各题得分相加，不取平均分。
 - 考试中未拿到本题满分的题视为错题，会整理成复习题回到辅导页；错题辅导完成后只重考这些错题。
 - 考试页只显示题目，不显示讲解和答案。
-- 批卷页显示后置摄像头预览，进入页面后等待 5 秒自动拍照，再上传给豆包多模态批改。
+- 批卷页显示后置摄像头预览，由学生按下快门拍照，再上传给豆包多模态批改；整页只有快门一个可点区域。
 - 批卷完成后，APP 语音和文字提示学生把手机翻回正面。
 - 批卷结果页停留 10 秒后自动进入下一步。
 - 考试成绩页按学习计划 `passScore` 判断达标；总分达到 `passScore` 时发送开门指令，未达到时 10 秒后进入错题辅导。

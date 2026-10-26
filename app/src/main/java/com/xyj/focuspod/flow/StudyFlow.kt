@@ -7,6 +7,7 @@ import com.xyj.focuspod.model.DeviceCheckStatus
 import com.xyj.focuspod.model.DoorStatus
 import com.xyj.focuspod.model.GradeResult
 import com.xyj.focuspod.model.GradingStep
+import com.xyj.focuspod.model.PlanScore
 import com.xyj.focuspod.model.Question
 import com.xyj.focuspod.model.QuestionSource
 import com.xyj.focuspod.model.StudyPage
@@ -50,6 +51,9 @@ class StudyFlow(
     private var hasStartedCurrentPage = false
     private var tutoringMessageSequence = 0
     private var tutoringRetryCount = 0
+    private var sessionPlans: List<StudyPlan> = emptyList()
+    private var questionPlan: Map<String, String> = emptyMap()
+    private var previewing = false
 
     fun observe(listener: (StudySessionState) -> Unit) {
         listeners += listener
@@ -74,7 +78,101 @@ class StudyFlow(
         }, START_DELAY_MS)
     }
 
-    fun selectPlan(plan: StudyPlan) {
+    /**
+     * 仅调试构建使用：直接渲染指定页面，用来核对视觉稿。
+     * 不启动计时器、不申请相机、不推进任何真实流程。
+     */
+    fun previewPage(page: StudyPage) {
+        previewing = true
+        val question = Question(
+            id = "preview/q1",
+            title = "例题：分数应用题",
+            questionMarkdown = "一根绳子长 **24 米**，用去了 1/3。还剩多少米？",
+            answer = "16 米",
+            solutionMarkdown = "",
+            knowledgePoints = listOf("求一个数的几分之几"),
+            tutoringPrompt = "",
+            gradingPrompt = ""
+        )
+        val plan = StudyPlan(
+            id = "preview",
+            title = "分数四则运算",
+            subject = "数学 · 王老师",
+            passScore = 80,
+            exampleQuestions = listOf(question),
+            examQuestions = listOf(question),
+            estimatedMinutes = 25
+        )
+        state = StudySessionState(
+            page = page,
+            stage = StudyStage.EXAMPLE,
+            selectedPlan = plan,
+            currentQuestion = question,
+            questionNumber = 6,
+            remainingCount = 3,
+            lastGradeResult = GradeResult(
+                questionId = question.id,
+                stage = StudyStage.EXAMPLE,
+                score = 86.0,
+                feedback = "思路正确：先算出用去的 8 米，再算剩余 16 米。单位写完整。",
+                suggestion = "最后一步减法可以再检查一遍。",
+                maxScore = 100.0
+            ),
+            voiceCaption = "请先读题，找出已知条件；你也可以直接说出卡住的地方。",
+            tutoringMessages = listOf(
+                TutoringMessage("p1", TutoringSpeaker.AI, "请先读题，找出已知条件；你也可以直接说出卡住的地方。"),
+                TutoringMessage("p2", TutoringSpeaker.STUDENT, "用去了三分之一是什么意思？"),
+                TutoringMessage("p3", TutoringSpeaker.AI, "想一想：24 米的三分之一，可以怎么算？")
+            ),
+            gradingStep = GradingStep.PREPARING,
+            gradingCountdownSeconds = 5,
+            resultCountdownSeconds = 10,
+            totalExamScore = 92.0,
+            examPassed = true,
+            planScores = listOf(
+                PlanScore(planId = "math", title = "分数四则运算", score = 92.0, passScore = 80, passed = true)
+            ),
+            completedQuestionCount = 10,
+            mistakeCount = 2,
+            doorStatus = DoorStatus.OPENED
+        )
+        listeners.forEach { it(state) }
+    }
+
+    /**
+     * 学习计划可以多选：多份计划合并成一次学习会话。
+     * 题量、预计时长相加；达标分取各计划平均值；题目 id 加计划前缀避免重名。
+     */
+    fun selectPlans(plans: List<StudyPlan>) {
+        if (plans.isEmpty()) return
+        val plan = if (plans.size == 1) plans.first() else mergePlans(plans)
+        sessionPlans = plans
+        questionPlan = if (plans.size == 1) {
+            val only = plans.first()
+            only.examQuestions.associate { it.id to only.id }
+        } else {
+            plans.flatMap { p -> p.examQuestions.map { "${p.id}/${it.id}" to p.id } }.toMap()
+        }
+        startSession(plan)
+    }
+
+    fun selectPlan(plan: StudyPlan) = selectPlans(listOf(plan))
+
+    private fun mergePlans(plans: List<StudyPlan>): StudyPlan {
+        fun qualify(question: Question, plan: StudyPlan): Question =
+            question.copy(id = "${plan.id}/${question.id}")
+        return StudyPlan(
+            id = plans.joinToString("+") { it.id },
+            title = "${plans.size} 项计划",
+            subject = plans.map { it.subject }.distinct().joinToString(" / "),
+            passScore = kotlin.math.round(plans.map { it.passScore }.average()).toInt(),
+            exampleQuestions = plans.flatMap { plan -> plan.exampleQuestions.map { qualify(it, plan) } },
+            examQuestions = plans.flatMap { plan -> plan.examQuestions.map { qualify(it, plan) } },
+            estimatedMinutes = plans.sumOf { it.estimatedMinutes }
+        )
+    }
+
+    private fun startSession(plan: StudyPlan) {
         activeStageQuestions = plan.exampleQuestions
         examRoundQuestions = plan.examQuestions
         exampleIndex = 0
@@ -103,6 +201,7 @@ class StudyFlow(
     }
 
     fun enterCurrentPage() {
+        if (previewing) return
         if (hasStartedCurrentPage) return
         hasStartedCurrentPage = true
         when (state.page) {
@@ -184,6 +283,7 @@ class StudyFlow(
                 page = StudyPage.TUTORING,
                 stage = StudyStage.EXAMPLE,
                 currentQuestion = question,
+                questionNumber = exampleIndex + 1,
                 remainingCount = activeStageQuestions.size - exampleIndex,
                 lastGradeResult = null,
                 alertMessage = null,
@@ -209,6 +309,7 @@ class StudyFlow(
                 page = StudyPage.EXAM,
                 stage = StudyStage.EXAM,
                 currentQuestion = question,
+                questionNumber = examIndex + 1,
                 remainingCount = activeStageQuestions.size - examIndex,
                 lastGradeResult = null,
                 alertMessage = null,
@@ -231,11 +332,11 @@ class StudyFlow(
                     state.copy(
                         page = StudyPage.GRADING,
                         gradingStep = GradingStep.PREPARING,
-                        gradingCountdownSeconds = GRADING_PREPARE_SECONDS,
-                        voiceCaption = "检测到翻转，请保持手机稳定，不要遮挡试卷。"
+                        gradingCountdownSeconds = 0,
+                        voiceCaption = "检测到翻转，请把答案完整放在画面中，然后按快门拍照。"
                     )
                 )
-                voicePromptService.speak("请保持手机稳定，不要遮挡试卷。五秒后自动拍照。")
+                voicePromptService.speak("请把答案完整放在画面中，然后按快门拍照。")
             }
         }
     }
@@ -288,32 +389,27 @@ class StudyFlow(
         )
     }
 
+    /**
+     * 批卷页只做手动拍照：进入页面后停在「准备拍摄」，等学生按下快门。
+     */
     private fun runGrading() {
-        val question = state.currentQuestion ?: return
+        state.currentQuestion ?: return
         update(
             state.copy(
                 gradingStep = GradingStep.PREPARING,
-                gradingCountdownSeconds = GRADING_PREPARE_SECONDS,
-                voiceCaption = "请保持手机稳定，不要遮挡试卷，答案完整放在画面中。"
+                gradingCountdownSeconds = 0,
+                voiceCaption = "请把答案完整放在画面中，然后按快门拍照。"
             )
         )
-        for (second in GRADING_PREPARE_SECONDS downTo 1) {
-            handler.postDelayed({
-                if (state.page == StudyPage.GRADING && state.gradingStep == GradingStep.PREPARING) {
-                    update(
-                        state.copy(
-                            gradingCountdownSeconds = second,
-                            voiceCaption = "准备拍摄，请勿遮挡试卷，${second} 秒后自动拍照。"
-                        )
-                    )
-                }
-            }, (GRADING_PREPARE_SECONDS - second) * 1_000L)
-        }
-        handler.postDelayed({
-            if (state.page == StudyPage.GRADING && state.gradingStep == GradingStep.PREPARING) {
-                captureAndGrade(question)
-            }
-        }, GRADING_PREPARE_SECONDS * 1_000L)
+        voicePromptService.speak("请把答案完整放在画面中，然后按快门拍照。")
+    }
+
+    /** 学生按下快门。只在「准备拍摄」态响应，避免重复触发。 */
+    fun captureNow() {
+        if (state.page != StudyPage.GRADING) return
+        if (state.gradingStep != GradingStep.PREPARING) return
+        val question = state.currentQuestion ?: return
+        captureAndGrade(question)
     }
 
     private fun captureAndGrade(question: Question) {
@@ -336,18 +432,22 @@ class StudyFlow(
                                 onFailure = { error ->
                                     update(
                                         state.copy(
-                                            alertMessage = "AI 批改失败，系统将自动重试。\n${error.message.orEmpty().take(MAX_ALERT_ERROR_LENGTH)}"
+                                            gradingStep = GradingStep.PREPARING,
+                                            alertMessage = "AI 批改失败，请重新按快门拍摄。\n${error.message.orEmpty().take(MAX_ALERT_ERROR_LENGTH)}"
                                         )
                                     )
-                                    handler.postDelayed({ runGrading() }, 1_000L)
                                 }
                             )
                         }
                     }, 900L)
                 },
                 onFailure = {
-                    update(state.copy(alertMessage = "照片不清晰，请保持手机稳定，系统将自动重试。"))
-                    handler.postDelayed({ runGrading() }, 1_000L)
+                    update(
+                        state.copy(
+                            gradingStep = GradingStep.PREPARING,
+                            alertMessage = "拍摄失败，请保持手机稳定后重新按快门。"
+                        )
+                    )
                 }
             )
         }
@@ -409,12 +509,16 @@ class StudyFlow(
     }
 
     private fun finishExamRound() {
-        val plan = state.selectedPlan ?: return
+        state.selectedPlan ?: return
         val totalScore = ExamScoring.totalScore(examResults)
         val mistakes = ExamScoring.mistakes(examResults)
-        val examPassed = ExamScoring.isPassed(totalScore, plan.passScore)
+        val scores = ExamScoring.planScores(examResults, sessionPlans, questionPlan)
+        val examPassed = scores.isNotEmpty() && scores.all { it.passed }
+        val failedPlans = scores.filter { !it.passed }
         val caption = if (examPassed) {
             "考试成绩 ${scoreText(totalScore)} 分，已达标，正在打开手机仓。"
+        } else if (failedPlans.isNotEmpty()) {
+            "考试成绩 ${scoreText(totalScore)} 分，${failedPlans.first().title}未达标，10 秒后进入错题辅导。"
         } else {
             "考试成绩 ${scoreText(totalScore)} 分，未达标，10 秒后进入错题辅导。"
         }
@@ -427,6 +531,7 @@ class StudyFlow(
                 totalExamScore = totalScore,
                 mistakeCount = mistakes.size,
                 examPassed = examPassed,
+                planScores = scores,
                 doorStatus = DoorStatus.OPENING,
                 voiceCaption = caption
             )
@@ -633,7 +738,6 @@ class StudyFlow(
         const val START_DELAY_MS = 3_000L
         const val RESULT_COUNTDOWN_SECONDS = 10
         const val TUTORING_RETRY_DELAY_MS = 1_500L
-        const val GRADING_PREPARE_SECONDS = 5
         const val EXAM_SCORE_FAIL_DELAY_MS = 10_000L
         const val MAX_ALERT_ERROR_LENGTH = 120
     }

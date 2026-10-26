@@ -2,29 +2,39 @@ package com.xyj.focuspod.screen
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.xyj.focuspod.model.StudySessionState
-import com.xyj.focuspod.ui.component.AppScaffold
-import com.xyj.focuspod.ui.component.PoseHintBar
-import com.xyj.focuspod.ui.component.QuestionCard
-import com.xyj.focuspod.ui.component.StageTopBar
-import com.xyj.focuspod.ui.component.VoiceCaptionBar
+import com.xyj.focuspod.ui.component.DesignCanvas
+import com.xyj.focuspod.ui.component.FlipHint
+import com.xyj.focuspod.ui.component.NenyaAlert
+import com.xyj.focuspod.ui.component.QuestionPanel
+import com.xyj.focuspod.ui.component.StageBar
 
+/** 页面 5 · 考试页（Figma 112:1386）：只有题目，不放讲解与答案。 */
 @Composable
 fun ExamScreen(state: StudySessionState) {
-    AppScaffold(alertMessage = state.alertMessage) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            StageTopBar(stageText = "考试", remainingText = "剩余 ${state.remainingCount} 题")
-            Spacer(modifier = Modifier.height(20.dp))
-            QuestionCard(question = state.currentQuestion)
-            Spacer(modifier = Modifier.height(18.dp))
-            PoseHintBar(text = "写完后请翻转手机提交本题。")
-            Spacer(modifier = Modifier.height(14.dp))
-            VoiceCaptionBar(text = state.voiceCaption)
+    DesignCanvas {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+        ) {
+            Spacer(modifier = Modifier.height(52.dp))
+            StageBar(stageLabel = "题目", remaining = state.remainingCount)
+            Spacer(modifier = Modifier.height(24.dp))
+            QuestionPanel(
+                questionNumber = state.questionNumber,
+                question = state.currentQuestion
+            )
+            Spacer(modifier = Modifier.weight(1f))
+            FlipHint(text = "写完后请翻转手机开始批卷")
+            Spacer(modifier = Modifier.height(40.dp))
         }
+        NenyaAlert(message = state.alertMessage)
     }
 }

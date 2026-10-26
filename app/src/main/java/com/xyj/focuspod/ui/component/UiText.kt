@@ -16,7 +16,7 @@ fun stageText(stage: StudyStage): String {
 
 fun gradingStepText(step: GradingStep, countdownSeconds: Int = 0): String {
     return when (step) {
-        GradingStep.PREPARING -> "准备拍摄\n${countdownSeconds.coerceAtLeast(0)} 秒后自动拍照"
+        GradingStep.PREPARING -> "准备拍摄"
         GradingStep.CAPTURING -> "正在拍摄"
         GradingStep.UPLOADING -> "正在上传"
         GradingStep.GRADING -> "正在批改"
