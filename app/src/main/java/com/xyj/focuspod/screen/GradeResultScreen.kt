@@ -60,18 +60,19 @@ fun GradeResultScreen(state: StudySessionState) {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.Bottom
+                horizontalArrangement = Arrangement.Center
             ) {
                 Text(
                     text = scoreText(result?.score ?: 0.0),
                     style = TextStyle(fontSize = 88.sp, lineHeight = 104.sp, fontWeight = FontWeight.Bold),
-                    color = NenyaColor.Deep
+                    color = NenyaColor.Deep,
+                    modifier = Modifier.alignByBaseline()
                 )
                 Text(
                     text = " 分",
                     style = TextStyle(fontSize = 26.sp, lineHeight = 40.sp, fontWeight = FontWeight.Medium),
-                    color = NenyaColor.Muted
+                    color = NenyaColor.Muted,
+                    modifier = Modifier.alignByBaseline()
                 )
             }
             Spacer(modifier = Modifier.height(24.dp))
