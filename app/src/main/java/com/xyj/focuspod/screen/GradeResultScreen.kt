@@ -69,7 +69,7 @@ fun GradeResultScreen(state: StudySessionState) {
                     color = NenyaColor.Deep
                 )
                 Text(
-                    text = " / ${scoreText(result?.maxScore ?: 0.0)} 分",
+                    text = " 分",
                     style = TextStyle(fontSize = 26.sp, lineHeight = 40.sp, fontWeight = FontWeight.Medium),
                     color = NenyaColor.Muted
                 )

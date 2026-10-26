@@ -53,13 +53,31 @@ fun DoneScreen(state: StudySessionState) {
                     .align(Alignment.CenterHorizontally)
                     .height(108.dp)
             )
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = scoreText(state.totalExamScore),
-                style = TextStyle(fontSize = 88.sp, lineHeight = 104.sp, fontWeight = FontWeight.Bold),
+                text = "全部完成",
+                style = NenyaText.SectionTitle,
                 color = NenyaColor.Deep,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Text(
+                    text = scoreText(state.totalExamScore),
+                    style = TextStyle(fontSize = 88.sp, lineHeight = 104.sp, fontWeight = FontWeight.Bold),
+                    color = NenyaColor.Deep
+                )
+                Text(
+                    text = " 分",
+                    style = TextStyle(fontSize = 26.sp, lineHeight = 40.sp, fontWeight = FontWeight.Medium),
+                    color = NenyaColor.Muted
+                )
+            }
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = if (passed) "考试达标，真棒！" else "考试不合格",
@@ -68,7 +86,7 @@ fun DoneScreen(state: StudySessionState) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(34.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
