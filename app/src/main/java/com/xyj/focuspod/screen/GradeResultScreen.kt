@@ -51,7 +51,7 @@ fun GradeResultScreen(state: StudySessionState) {
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "第 ${"%02d".format(state.questionNumber)} 题完成",
+                text = "第 ${state.questionNumber} 题完成",
                 style = NenyaText.SectionTitle,
                 color = NenyaColor.Deep,
                 textAlign = TextAlign.Center,
@@ -101,7 +101,7 @@ fun GradeResultScreen(state: StudySessionState) {
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "${state.resultCountdownSeconds} 秒后进入下一步",
+                    text = "${state.resultCountdownSeconds} 秒后${countdownTargetOf(state)}",
                     style = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
                     color = NenyaColor.Deep
                 )
@@ -147,8 +147,14 @@ private fun feedbackOf(result: GradeResult?): String {
     }
 }
 
+private fun countdownTargetOf(state: StudySessionState): String = when {
+    state.remainingCount > 1 -> "进入下一题"
+    state.stage == StudyStage.EXAMPLE -> "进入考试"
+    else -> "查看考试成绩"
+}
+
 private fun nextStepOf(state: StudySessionState): String = when {
-    state.remainingCount > 1 -> "下一题：第 ${"%02d".format(state.questionNumber + 1)} 题"
+    state.remainingCount > 1 -> "下一题：第 ${state.questionNumber + 1} 题"
     state.stage == StudyStage.EXAMPLE -> "例题讲解完成，接下来进入考试"
     else -> "考试完成，接下来看考试成绩"
 }
