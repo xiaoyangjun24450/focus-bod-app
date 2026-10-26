@@ -179,6 +179,38 @@ fun SummaryRow(label: String, value: String) {
     }
 }
 
+/** 多计划时的单行成绩：计划名 + 得分 + 达标状态。 */
+@Composable
+fun PlanScoreRow(title: String, score: String, passed: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(32.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = TextStyle(fontSize = 22.sp, lineHeight = 34.sp),
+            color = NenyaColor.Muted,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = score,
+            style = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold),
+            color = if (passed) NenyaColor.Deep else NenyaColor.Danger
+        )
+        Spacer(modifier = Modifier.size(6.dp))
+        Icon(
+            painter = painterResource(
+                id = if (passed) R.drawable.ic_check else R.drawable.ic_close
+            ),
+            contentDescription = null,
+            tint = if (passed) NenyaColor.Deep else NenyaColor.Danger,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
 /** 竖直弹簧占位，把内容压到设计稿位置。 */
 @Composable
 fun VSpace(dp: Int) {

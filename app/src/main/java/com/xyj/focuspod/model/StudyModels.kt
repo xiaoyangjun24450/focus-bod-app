@@ -120,6 +120,9 @@ data class StudySessionState(
     val totalExamScore: Double = 0.0,
     val examPassed: Boolean? = null,
     val planScores: List<PlanScore> = emptyList(),
+    val planIndex: Int = 0,
+    val planCount: Int = 0,
+    val nextPlanTitle: String? = null,
     val completedQuestionCount: Int = 0,
     val mistakeCount: Int = 0
 )

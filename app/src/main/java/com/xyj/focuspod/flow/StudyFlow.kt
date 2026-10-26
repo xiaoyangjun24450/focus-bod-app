@@ -53,6 +53,9 @@ class StudyFlow(
     private var tutoringRetryCount = 0
     private var sessionPlans: List<StudyPlan> = emptyList()
     private var questionPlan: Map<String, String> = emptyMap()
+    private var planQueue: List<StudyPlan> = emptyList()
+    private var planIndex = 0
+    private var accumulatedScores: List<PlanScore> = emptyList()
     private var previewing = false
 
     fun observe(listener: (StudySessionState) -> Unit) {
@@ -82,7 +85,7 @@ class StudyFlow(
      * 仅调试构建使用：直接渲染指定页面，用来核对视觉稿。
      * 不启动计时器、不申请相机、不推进任何真实流程。
      */
-    fun previewPage(page: StudyPage) {
+    fun previewPage(page: StudyPage, multiPlan: Boolean = false) {
         previewing = true
         val question = Question(
             id = "preview/q1",
@@ -129,50 +132,43 @@ class StudyFlow(
             resultCountdownSeconds = 3,
             totalExamScore = 92.0,
             examPassed = true,
-            planScores = listOf(
-                PlanScore(planId = "math", title = "分数四则运算", score = 92.0, passScore = 80, passed = true)
-            ),
+            planScores = if (multiPlan) {
+                listOf(
+                    PlanScore(planId = "math", title = "分数四则运算", score = 82.0, passScore = 80, passed = true),
+                    PlanScore(planId = "english", title = "英语基础句型训练", score = 92.0, passScore = 75, passed = true)
+                )
+            } else {
+                listOf(
+                    PlanScore(planId = "math", title = "分数四则运算", score = 92.0, passScore = 80, passed = true)
+                )
+            },
             completedQuestionCount = 10,
             mistakeCount = 2,
+            planIndex = if (multiPlan) 1 else 0,
+            planCount = if (multiPlan) 3 else 1,
+            nextPlanTitle = if (multiPlan) "语文阅读表达训练" else null,
             doorStatus = DoorStatus.OPENED
         )
         listeners.forEach { it(state) }
     }
 
     /**
-     * 学习计划可以多选：多份计划合并成一次学习会话。
-     * 题量、预计时长相加；达标分取各计划平均值；题目 id 加计划前缀避免重名。
+     * 学习计划可以多选：按顺序一个计划一个计划地学。
+     * 每份计划自己走「例题 → 考试 → 成绩」，达标后进入下一份，最后一份达标才开门。
      */
     fun selectPlans(plans: List<StudyPlan>) {
         if (plans.isEmpty()) return
-        val plan = if (plans.size == 1) plans.first() else mergePlans(plans)
-        sessionPlans = plans
-        questionPlan = if (plans.size == 1) {
-            val only = plans.first()
-            only.examQuestions.associate { it.id to only.id }
-        } else {
-            plans.flatMap { p -> p.examQuestions.map { "${p.id}/${it.id}" to p.id } }.toMap()
-        }
-        startSession(plan)
+        planQueue = plans
+        planIndex = 0
+        accumulatedScores = emptyList()
+        startPlan(plans.first(), runSelfCheck = true)
     }
 
     fun selectPlan(plan: StudyPlan) = selectPlans(listOf(plan))
 
-    private fun mergePlans(plans: List<StudyPlan>): StudyPlan {
-        fun qualify(question: Question, plan: StudyPlan): Question =
-            question.copy(id = "${plan.id}/${question.id}")
-        return StudyPlan(
-            id = plans.joinToString("+") { it.id },
-            title = "${plans.size} 项计划",
-            subject = plans.map { it.subject }.distinct().joinToString(" / "),
-            passScore = kotlin.math.round(plans.map { it.passScore }.average()).toInt(),
-            exampleQuestions = plans.flatMap { plan -> plan.exampleQuestions.map { qualify(it, plan) } },
-            examQuestions = plans.flatMap { plan -> plan.examQuestions.map { qualify(it, plan) } },
-            estimatedMinutes = plans.sumOf { it.estimatedMinutes }
-        )
-    }
-
-    private fun startSession(plan: StudyPlan) {
+    private fun startPlan(plan: StudyPlan, runSelfCheck: Boolean) {
+        sessionPlans = listOf(plan)
+        questionPlan = plan.examQuestions.associate { it.id to plan.id }
         activeStageQuestions = plan.exampleQuestions
         examRoundQuestions = plan.examQuestions
         exampleIndex = 0
@@ -182,22 +178,41 @@ class StudyFlow(
         completedAttemptCount = 0
         update(
             state.copy(
-                page = StudyPage.DEVICE_SELF_CHECK,
+                page = if (runSelfCheck) StudyPage.DEVICE_SELF_CHECK else StudyPage.TUTORING,
                 stage = StudyStage.EXAMPLE,
                 selectedPlan = plan,
                 currentQuestion = null,
                 remainingCount = plan.exampleQuestions.size,
                 lastGradeResult = null,
                 alertMessage = null,
-                deviceChecks = initialDeviceChecks(),
-                voiceCaption = "请把手机放入手机仓并关闭仓门，系统开始自检。",
+                deviceChecks = if (runSelfCheck) initialDeviceChecks() else state.deviceChecks,
+                voiceCaption = if (runSelfCheck) {
+                    "请把手机放入手机仓并关闭仓门，系统开始自检。"
+                } else {
+                    "开始第 ${planIndex + 1} 个计划：${plan.title}。"
+                },
                 completedQuestionCount = 0,
                 mistakeCount = 0,
                 totalExamScore = 0.0,
-                examPassed = null
+                examPassed = null,
+                planIndex = planIndex,
+                planCount = planQueue.size,
+                nextPlanTitle = null,
+                planScores = accumulatedScores
             )
         )
-        runDeviceSelfCheck()
+        if (runSelfCheck) {
+            runDeviceSelfCheck()
+        } else {
+            enterExampleQuestion()
+        }
+    }
+
+    private fun advanceToNextPlan() {
+        if (planIndex + 1 >= planQueue.size) return
+        planIndex += 1
+        val next = planQueue[planIndex]
+        startPlan(next, runSelfCheck = false)
     }
 
     fun enterCurrentPage() {
@@ -509,18 +524,23 @@ class StudyFlow(
     }
 
     private fun finishExamRound() {
-        state.selectedPlan ?: return
+        val currentPlan = state.selectedPlan ?: return
         val totalScore = ExamScoring.totalScore(examResults)
         val mistakes = ExamScoring.mistakes(examResults)
-        val scores = ExamScoring.planScores(examResults, sessionPlans, questionPlan)
-        val examPassed = scores.isNotEmpty() && scores.all { it.passed }
-        val failedPlans = scores.filter { !it.passed }
-        val caption = if (examPassed) {
-            "考试成绩 ${scoreText(totalScore)} 分，已达标，正在打开手机仓。"
-        } else if (failedPlans.isNotEmpty()) {
-            "考试成绩 ${scoreText(totalScore)} 分，${failedPlans.first().title}未达标，10 秒后进入错题辅导。"
+        val current = ExamScoring.planScores(examResults, listOf(currentPlan), questionPlan).firstOrNull()
+        accumulatedScores = accumulatedScores.filterNot { it.planId == currentPlan.id } +
+            listOfNotNull(current)
+        val examPassed = current?.passed == true
+        val nextTitle = if (examPassed && planIndex + 1 < planQueue.size) {
+            planQueue[planIndex + 1].title
         } else {
-            "考试成绩 ${scoreText(totalScore)} 分，未达标，10 秒后进入错题辅导。"
+            null
+        }
+        val caption = when {
+            nextTitle != null ->
+                "考试成绩 ${scoreText(totalScore)} 分，本计划达标，即将进入《$nextTitle》。"
+            examPassed -> "考试成绩 ${scoreText(totalScore)} 分，已达标，正在打开手机仓。"
+            else -> "考试成绩 ${scoreText(totalScore)} 分，未达标，10 秒后进入错题辅导。"
         }
         update(
             state.copy(
@@ -531,7 +551,10 @@ class StudyFlow(
                 totalExamScore = totalScore,
                 mistakeCount = mistakes.size,
                 examPassed = examPassed,
-                planScores = scores,
+                planScores = accumulatedScores,
+                planIndex = planIndex,
+                planCount = planQueue.size,
+                nextPlanTitle = nextTitle,
                 doorStatus = DoorStatus.OPENING,
                 voiceCaption = caption
             )
@@ -542,7 +565,16 @@ class StudyFlow(
     private fun runExamScorePage() {
         val plan = state.selectedPlan ?: return
         if (state.examPassed == true) {
-            runDoorOpen()
+            val next = state.nextPlanTitle
+            if (next != null) {
+                handler.postDelayed({
+                    if (state.page == StudyPage.EXAM_SCORE && state.examPassed == true) {
+                        advanceToNextPlan()
+                    }
+                }, NEXT_PLAN_DELAY_MS)
+            } else {
+                runDoorOpen()
+            }
             return
         }
 
@@ -744,6 +776,7 @@ class StudyFlow(
         const val RESULT_COUNTDOWN_SECONDS = 3
         const val TUTORING_RETRY_DELAY_MS = 1_500L
         const val EXAM_SCORE_FAIL_DELAY_MS = 10_000L
+        const val NEXT_PLAN_DELAY_MS = 3_000L
         const val MAX_ALERT_ERROR_LENGTH = 120
     }
 }

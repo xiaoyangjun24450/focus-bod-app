@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
             runCatching { StudyPage.valueOf(name) }.getOrNull()
         }
         if (previewPage != null) {
-            studyFlow.previewPage(previewPage)
+            studyFlow.previewPage(previewPage, intent?.getBooleanExtra("multi", false) == true)
         } else {
             studyFlow.start()
         }

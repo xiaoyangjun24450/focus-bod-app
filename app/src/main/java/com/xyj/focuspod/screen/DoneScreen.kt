@@ -29,6 +29,7 @@ import com.xyj.focuspod.model.StudySessionState
 import com.xyj.focuspod.ui.component.DesignCanvas
 import com.xyj.focuspod.ui.component.NenyaAlert
 import com.xyj.focuspod.ui.component.NenyaPod
+import com.xyj.focuspod.ui.component.PlanScoreRow
 import com.xyj.focuspod.ui.component.StageBar
 import com.xyj.focuspod.ui.component.SummaryRow
 import com.xyj.focuspod.ui.component.scoreText
@@ -55,7 +56,7 @@ fun DoneScreen(state: StudySessionState) {
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
-                text = "全部完成",
+                text = if (state.nextPlanTitle != null) "本计划完成" else "全部完成",
                 style = NenyaText.SectionTitle,
                 color = NenyaColor.Deep,
                 textAlign = TextAlign.Center,
@@ -96,7 +97,18 @@ fun DoneScreen(state: StudySessionState) {
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                SummaryRow(label = "达标分数", value = passScoreText(state))
+                if (state.planScores.size <= 1) {
+                    SummaryRow(label = "达标分数", value = passScoreText(state))
+                } else {
+                    // 多计划：每个计划单独一行，各按自己的达标分判定
+                    state.planScores.forEach { planScore ->
+                        PlanScoreRow(
+                            title = planScore.title,
+                            score = "${scoreText(planScore.score)} 分",
+                            passed = planScore.passed
+                        )
+                    }
+                }
                 SummaryRow(label = "完成题数", value = "${state.completedQuestionCount} 题")
                 SummaryRow(label = "未满分题", value = "${state.mistakeCount} 题 · 已记录")
             }
@@ -104,7 +116,11 @@ fun DoneScreen(state: StudySessionState) {
             DoorCard(state = state, passed = passed)
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = "正在播报成绩与开门结果",
+                text = if (state.nextPlanTitle != null) {
+                    "本计划成绩已播报，即将进入下一个计划"
+                } else {
+                    "正在播报成绩与开门结果"
+                },
                 style = NenyaText.SectionTitle,
                 color = NenyaColor.Muted,
                 textAlign = TextAlign.Center,
@@ -118,22 +134,26 @@ fun DoneScreen(state: StudySessionState) {
 
 @Composable
 private fun DoorCard(state: StudySessionState, passed: Boolean) {
+    val nextPlan = state.nextPlanTitle
     val failed = passed && state.doorStatus == DoorStatus.FAILED
     val color = if (!passed || failed) NenyaColor.Danger else NenyaColor.Deep
     val icon = when {
         !passed -> R.drawable.ic_close
+        nextPlan != null -> R.drawable.ic_check
         state.doorStatus == DoorStatus.OPENED -> R.drawable.ic_check
         state.doorStatus == DoorStatus.FAILED -> R.drawable.ic_close
         else -> R.drawable.ic_pending
     }
     val title = when {
         !passed -> "考试不合格"
+        nextPlan != null -> "本计划达标"
         state.doorStatus == DoorStatus.OPENED -> "开门成功"
         state.doorStatus == DoorStatus.FAILED -> "开门失败"
         else -> "正在开门"
     }
     val detail = when {
         !passed -> "10 秒后开始错题辅导"
+        nextPlan != null -> "即将进入《$nextPlan》"
         state.doorStatus == DoorStatus.OPENED -> "可以取出手机啦"
         state.doorStatus == DoorStatus.FAILED -> "请联系老师或工作人员"
         else -> "请稍候，正在打开手机仓"
