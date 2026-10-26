@@ -68,7 +68,7 @@ DeviceSelfCheckScreen.kt    设备自检页，合并 USB 等待
 TutoringScreen.kt           辅导页，例题和错题整理后的新例题共用
 ExamScreen.kt               考试页，只显示题目
 GradingScreen.kt            批卷页，显示拍摄画面和批改状态
-GradeResultScreen.kt        批卷结果页，10 秒后自动跳转
+GradeResultScreen.kt        批卷结果页，3 秒后自动跳转
 DoneScreen.kt               考试成绩页，达标后显示开门状态，不达标后进入错题辅导
 ```
 

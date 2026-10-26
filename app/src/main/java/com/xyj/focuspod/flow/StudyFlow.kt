@@ -126,7 +126,7 @@ class StudyFlow(
             ),
             gradingStep = GradingStep.PREPARING,
             gradingCountdownSeconds = 5,
-            resultCountdownSeconds = 10,
+            resultCountdownSeconds = 3,
             totalExamScore = 92.0,
             examPassed = true,
             planScores = listOf(
@@ -469,10 +469,10 @@ class StudyFlow(
                     lastGradeResult = result,
                     resultCountdownSeconds = RESULT_COUNTDOWN_SECONDS,
                     completedQuestionCount = completedQuestionCountAfter(result),
-                    voiceCaption = "本题结果已生成，10 秒后进入下一步。"
+                    voiceCaption = "本题结果已生成，3 秒后进入下一步。"
                 )
             )
-            voicePromptService.speak("本题结果已生成，十秒后进入下一步。")
+            voicePromptService.speak("本题结果已生成，三秒后进入下一步。")
         }
     }
 
@@ -736,7 +736,7 @@ class StudyFlow(
         const val MAX_TUTORING_MESSAGES = 6
         const val MAX_TUTORING_RETRY_COUNT = 2
         const val START_DELAY_MS = 3_000L
-        const val RESULT_COUNTDOWN_SECONDS = 10
+        const val RESULT_COUNTDOWN_SECONDS = 3
         const val TUTORING_RETRY_DELAY_MS = 1_500L
         const val EXAM_SCORE_FAIL_DELAY_MS = 10_000L
         const val MAX_ALERT_ERROR_LENGTH = 120
